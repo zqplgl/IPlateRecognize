@@ -1,0 +1,31 @@
+cmake_minimum_required(VERSION 3.0)
+
+set(CMAKE_CXX_FLAGS "-std=c++11")
+set(CMAKE_LIBRARY_OUTPUT_DIRECTORY ${PROJECT_SOURCE_DIR}/lib)
+
+include_directories(./include)
+include_directories(/home/zqp/install_lib/include)
+include_directories(/usr/local/cuda/include)
+include_directories(/usr/include/python2.7)
+find_library(Caffe_LIB caffe /home/zqp/install_lib/lib)
+find_library(Glog_LIB glog)
+find_library(Boostsystem_LIB boost_system)
+find_library(Classifier_LIB plateCharactRecognize)
+find_library(Boostpython_LIB boost_python)
+message(status ${Boostpython_LIB})
+find_package(OpenCV 3.4)
+message(status ${Caffe_LIB})
+
+file(GLOB SRC src/*.cpp)
+add_library(IPlateRecognize SHARED ${SRC})
+target_link_libraries(IPlateRecognize ${Caffe_LIB} ${Glog_LIB} ${OpenCV_LIBS} ${Classifier_LIB})
+add_library(_VehiclePlate SHARED python/PyIPlateRecognize.cpp)
+target_link_libraries(_VehiclePlate IPlateRecognize ${Boostpython_LIB})
+
+add_executable(main IPlateRecognizeTest.cpp)
+target_link_libraries(main IPlateRecognize)
+
+#file(GLOB SRC src/*.cpp testDllPlateDtection2015/*.cpp)
+#message(status ${SRC})
+#add_executable(main ${SRC})
+#target_link_libraries(main ${Caffe_LIB} ${Boostsystem_LIB} ${Glog_LIB} ${OpenCV_LIBS} ${Classifier_LIB})
