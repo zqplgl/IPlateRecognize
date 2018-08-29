@@ -16,7 +16,7 @@ namespace Vehicle
         plateinfos.clear();
         pr::PlateInfo plate = detetor->PlateRecogPipeline(im.data,im.cols,im.rows,confidence_threshold);
 
-        if(plate.confidence<confidence_threshold)
+        if(plate.confidence<confidence_threshold || plate.name.size()<4)
             return;
         Vehicle::PlateInfo plateinfo;
         plateinfo.zone = plate.ROI;

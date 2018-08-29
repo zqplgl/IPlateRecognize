@@ -106,6 +106,8 @@ std::vector<vector<float> > Detector::Detect(const cv::Mat& img) {
 	}
 	return detections;
 }
+inline int judgeCharRange(int id)
+{return id<31 || id>64;}
 
 /* Load the mean file in binaryproto format. */
 void Detector::SetMean(const string& mean_file, const string& mean_value) {
@@ -222,6 +224,7 @@ void Detector::Preprocess(const cv::Mat& img,
 		== net_->input_blobs()[0]->cpu_data())
 		<< "Input channels are not wrapping the input layer of the network.";
 }
+
 void Detector::Preprocess(const cv::Mat& img,
 	std::vector<cv::Mat>* input_channels, double normalize_value) {
 	/* Convert the input image to the input image format of the network. */
@@ -261,6 +264,7 @@ void Detector::Preprocess(const cv::Mat& img,
 		== net_->input_blobs()[0]->cpu_data())
 		<< "Input channels are not wrapping the input layer of the network.";
 }
+
 Mat Detector::DetectPlate(unsigned char* imagedata, int width, int height, int &x,int &y,int &w,int &h,float confidence_threshold, int &plateClass)
 {
 	Mat img(height, width, CV_8UC3, imagedata);
@@ -332,12 +336,13 @@ Mat Detector::DetectPlate(unsigned char* imagedata, int width, int height, int &
 	}
 	return plateMat;
 }
+
 std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata, int width, int height, int plateClass, int &whitePlateType)
 {
 	Mat img(height, width, CV_8UC3, imagedata);
 	
 	cv::Mat image_finemapping = prc.fineMapping->FineMappingVertical(img, plateClass);
-	std::pair<std::string, float> res;
+	std::pair<vector<int>, float> res;
 #if 1
 	if (plateClass == 1 || plateClass == 2 || plateClass == 3 || plateClass == 5 || plateClass == 6)
 	{
@@ -346,11 +351,7 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 			cv::Mat image_finemappingWhitePlate;
 			cv::resize(image_finemapping, image_finemappingWhitePlate, cv::Size(136, 36));//
 			cv::resize(image_finemapping, image_finemapping, cv::Size(140, 36));
-			clock_t start2, finish2;
-			start2 = clock();
-			res = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(image_finemapping, pr::CH_PLATE_CODE);
-			finish2 = clock();
-			double time2 = (double)(finish2 - start2) / CLOCKS_PER_SEC;
+			res = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(image_finemapping);
 
 			Rect cutPlate;
 			cutPlate.x = 3;
@@ -361,27 +362,21 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 			whitePlateType = platewhite->classify(cutPlatemat);
 			if (whitePlateType == 0)
 			{
-				string plate = res.first;
-				char ch = plate[0];
-				if ((ch >= 'A' && ch <= 'Z') || (ch >= 'a' && ch <= 'z') || (ch >= '0' && ch <= '9'))
+				vector<int> &plate = res.first;
+				int ch = plate[0];
+				if (!judgeCharRange(ch))
 					whitePlateType = 1;//jundui palte is wrong,here change
 				else
 				{
-					 
-					 string temp = plate.substr(0,plate.size() - 2);
-					 temp.append("��");
-					 res.first = temp;
+					plate[plate.size() - 1] = 68;
 				}
 
 			}
 			else if (whitePlateType == 1)//jundui
 			{
-
-
 			}
 			else if (whitePlateType == 3)//wujing
 			{
-
 			}
 		}
 		else
@@ -395,17 +390,12 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 			Mat image_finemappingcut(image_finemapping, plateRect);
 
 			cv::resize(image_finemappingcut, image_finemappingcut, cv::Size(140, 36));
-			clock_t start2, finish2;
-			start2 = clock();
-			res = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(image_finemappingcut, pr::CH_PLATE_CODE);
-			finish2 = clock();
-			double time2 = (double)(finish2 - start2) / CLOCKS_PER_SEC;
+			res = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(image_finemappingcut);
 		}
 	}
 	//plateclass is Y2
 	if (plateClass == 4)
 	{
-		//image_finemapping = pr::fastdeskew(image_finemapping, 5);
 		cv::resize(image_finemapping, image_finemapping, cv::Size(140, 60));//image_finemapping
 		cv::Mat proposal;
 		if (image_finemapping.channels() == 3)
@@ -425,7 +415,6 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 
 		int cutPosition = util::cut2LayerPlatePositionYellow2(imageout);
 		if (cutPosition > 35 || cutPosition < 15)cutPosition = 23;
-		//util::clearLiuDingOnlyYellow2(imageout);
 
 		//cut to two parts
 		Rect downPartRect,uppartRect;
@@ -443,25 +432,20 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 		cv::Mat downpartMat(image_finemapping, downPartRect);
 		cv::resize(uppartMat, uppartMat, cv::Size(140, 36));
 		cv::resize(downpartMat, downpartMat, cv::Size(140, 36));
-		std::pair<std::string, float> resdown = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(downpartMat, pr::CH_PLATE_CODE);
-		std::pair<std::string, float> resup = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(uppartMat, pr::CH_PLATE_CODE);
+		std::pair<vector<int>, float> resdown = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(downpartMat);
+		std::pair<vector<int>, float> resup = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(uppartMat);
 		
-		string resultdowm, resultup;
+		if(resdown.first.size()>5)
+			resdown.first.resize(5);
 
-		if (resdown.first.size() >= 5)resultdowm = resdown.first.substr(0, 5);
-		else resultdowm = resdown.first;
-		if (resup.first.size() > 2)resultup = resup.first.substr(0, 3);
-		else resultup = resup.first;
-		res.first = resultup + resultdowm;
+		if(resup.first.size()>2)
+		    resup.first.resize(2);
+		res.first.insert(res.first.begin(),resup.first.begin(),resup.first.end());
+		res.first.insert(res.first.end(),resdown.first.begin(),resdown.first.end());
 		res.second = (resdown.second + resup.second) / 2.0;
-		cout << "platename" << res.first << endl;
-		cout << "plateconfidence" << res.second << endl;
 	}
-	//plateclass is W2
 	if (plateClass == 7)
 	{
-		//image_finemapping = pr::fastdeskew(image_finemapping, 5);
-		//�ж�˫���ɫ��������
 		cv::Mat image_finemappingWhitePlate;
 		cv::resize(image_finemapping, image_finemappingWhitePlate, cv::Size(136, 36));//
 		Rect cutPlate;
@@ -491,7 +475,6 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 		int k = 0.01, win = 22;
 		Mat imageout = cv::Mat::zeros(image_finemapping.size(), CV_8U);
 		util::NiblackSauvolaWolfJolion(proposal, imageout, SAUVOLA, win, win, 0.18 * k);//
-		//util::clearLiuDingOnlyYellow2(imageout);
 		int cutPosition = util::cut2LayerPlatePositionWhite2(imageout);
 		if (cutPosition > 35 || cutPosition < 20)cutPosition = 25;
 
@@ -514,22 +497,30 @@ std::pair<std::string, float> Detector::PlateRecogniser(unsigned char* imagedata
 		
 		bitwise_not(downpartMat, downpartMat);  //yellow white new 
 		bitwise_not(uppartMat, uppartMat);  //yellow white new 
-		std::pair<std::string, float> resdown = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(downpartMat, pr::CH_PLATE_CODE);
-		std::pair<std::string, float> resup = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(uppartMat, pr::CH_PLATE_CODE);
-		string resultdowm,resultup;
-		
-		if (resdown.first.size() >= 5)resultdowm = resdown.first.substr(0,5);
-		else resultdowm = resdown.first;
-		if (resup.first.size() > 2)resultup=resup.first.substr(0, 3);
-		else resultup = resup.first;
-		res.first = resultup + resultdowm;
-		res.second = (resdown.second + resup.second)/2.0;
-		cout << "platename" << res.first << endl;
-		cout << "plateconfidence" << res.second << endl;
-	}
+		std::pair<vector<int>, float> resdown = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(downpartMat);
+		std::pair<vector<int>, float> resup = prc.segmentationFreeRecognizer->SegmentationFreeForSinglePlate(uppartMat);
 
+		if(resdown.first.size()>5)
+			resdown.first.resize(5);
+
+		if(resup.first.size()>2)
+			resup.first.resize(2);
+		res.first.insert(res.first.begin(),resup.first.begin(),resup.first.end());
+		res.first.insert(res.first.end(),resdown.first.begin(),resdown.first.end());
+		res.second = (resdown.second + resup.second) / 2.0;
+	}
 #endif
-	return res;
+
+	pair<string,float> result;
+	string name = "";
+	vector<string> a= pr::CH_PLATE_CODE;
+	for(int i=0; i<res.first.size(); ++i)
+	{
+	    name += pr::CH_PLATE_CODE[res.first[i]];
+	}
+	result.first = name;
+	result.second = res.second;
+	return result;
 }
 
 PlateInfo Detector::PlateRecogPipeline(unsigned char* imagedata, int width, int height, float confidence_threshold)

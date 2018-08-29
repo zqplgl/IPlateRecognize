@@ -33,6 +33,11 @@ int main()
     for(int i=0; i<impaths.size(); ++i)
     {
         cv::Mat im = cv::imread(impaths[i]);
+        cv::MatSize matsize = im.size;
+        cv::Size size = im.size();
+        int a1 = matsize[2];
+        int a2 = matsize[1];
+        int a3 = matsize[0];
         detector->detect(im,plateinfos,0.7);
 
         for(int j =0; j<plateinfos.size(); ++j)
@@ -42,7 +47,6 @@ int main()
                 "score: "<<plateinfos[j].score<<"\t"<<endl;
             cv::rectangle(im,plateinfos[j].zone,cv::Scalar(0,0,255));
         }
-
 //        cv::imshow("im",im);
 //        cv::waitKey(0);
     }

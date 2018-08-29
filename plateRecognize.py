@@ -35,17 +35,14 @@ def run():
     picDir = "/home/zqp/testimage/image/"
 
     for picName in os.listdir(picDir):
-        print picName
-        
         im = cv2.imread(picDir+picName)
         result = plateDetector.detect(im)
 
-        cv2.imshow("im",im)
         if result:
             print result["license"],"\t",result["color"],"\t",result["zone"],"\t",result["score"]
 
-        if cv2.waitKey(0)==27:
-            break
+        #if cv2.waitKey(0)==27:
+            #break
 
 
 if __name__=="__main__":

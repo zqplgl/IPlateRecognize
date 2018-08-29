@@ -10,6 +10,7 @@
 namespace pr{
 
 
+    std::pair<std::vector<int>,float> decodeResults(cv::Mat code_table);
     class SegmentationFreeRecognizer{
     public:
         const int CHAR_INPUT_W = 14;
@@ -18,6 +19,7 @@ namespace pr{
 
         SegmentationFreeRecognizer(std::string prototxt,std::string caffemodel);
         std::pair<std::string,float> SegmentationFreeForSinglePlate(cv::Mat plate,std::vector<std::string> mapping_table);
+        std::pair<std::vector<int>,float> SegmentationFreeForSinglePlate(const cv::Mat &plate);
 
 
     private:
